@@ -10,11 +10,9 @@ display.setStatusBar(display.HiddenStatusBar)
 
 
 
--- ===========
--- = Content =
--- ===========
-
-
+-- ==============
+-- = Connection =
+-- ==============
 
 require (_G.pubnubPath .. "pubnub")
 
@@ -28,14 +26,19 @@ local pubnub_obj = _G.pubnub.new({
     origin        = "pubsub.pubnub.com"
 })
 
-local a = {}
-a.count = 0
+local _testObject = {
+    count = 0,
+}
 
 pubnub_obj:subscribe({
     channel = channelID,
     callback = function(message)
-        a.count = a.count + 1
-        print(message.msgtext, a.count)
+        _testObject.count = _testObject.count + 1
+        print("message: ", _testObject.count)
+        print(message.sender_uuid, message.body)
+        if message.sender_uuid ~= pubnub_obj.uuid then
+            _testObject.onMessegeReceived(message.body)
+        end
     end,
     errorback = function()
         print("ERROR!")
@@ -45,18 +48,63 @@ pubnub_obj:subscribe({
 local function sendMessage(text)
     pubnub_obj:publish({
         channel = channelID,
-        message = {msgtext = text}
+        message = {
+            body = text,
+            sender_uuid = pubnub_obj.uuid
+        }
     })
 end
 
 
-timer.performWithDelay(1000, function()
-    sendMessage("Hello World!")
-end)
+
+-- ===============
+-- = Interaction =
+-- ===============
+
+local rect = display.newRoundedRect(centerX, centerY, 190, 80, 10)
+rect:setFillColor(135/255, 129/255, 189/255)
+rect.strokeWidth = 2
+rect:setStrokeColor(1,1,1)
+
+function rect:press()
+    self.xScale = 0.85
+    self.yScale = 0.85
+end
 
 
+function rect:release()
+    self.xScale = 1
+    self.yScale = 1
+end
 
--- local rect = display.newRoundedRect(centerX, centerY, 100, 50, 10)
--- rect:setFillColor(135/255, 129/255, 189/255)
--- rect.strokeWidth = 3
--- rect:setStrokeColor(1,1,1)
+
+local function touchListener(event)
+    local phase = event.phase
+
+    if phase == "began" then
+        display:getCurrentStage():setFocus(rect)
+        rect:press()
+        sendMessage("began")
+
+    elseif phase == "ended" then
+        display:getCurrentStage():setFocus(nil)
+        rect:release()
+        sendMessage("ended")
+    end
+end
+
+
+function _testObject.onMessegeReceived(messageContents)
+    if messageContents == "began" then
+        rect:removeEventListener("touch", touchListener)
+        rect:press()
+
+    elseif messageContents == "ended" then
+        rect:addEventListener("touch", touchListener)
+        rect:release()
+
+    end
+end
+
+
+rect:addEventListener("touch", touchListener)
