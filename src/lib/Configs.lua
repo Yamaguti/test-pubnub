@@ -1,5 +1,5 @@
 
 
 _G.libPath = "lib."
-_G.pubnubPath = "pubnub."
+_G.pubnubPath = "pubnub.corona."
 
